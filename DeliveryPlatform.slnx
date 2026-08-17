@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="DeliveryPlatform.Business/DeliveryPlatform.Business.csproj" />
+  <Project Path="DeliveryPlatform.Core/DeliveryPlatform.Core.csproj" />
+  <Project Path="DeliveryPlatform.Web/DeliveryPlatform.Web.csproj" />
+  <Project Path="DeliveryPlatform.Worker/DeliveryPlatform.Worker.csproj" />
+</Solution>

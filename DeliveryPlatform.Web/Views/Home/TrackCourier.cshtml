@@ -1,0 +1,100 @@
+@{
+    ViewData["Title"] = "Canlı Kurye Takibi";
+}
+
+<!-- Leaflet.js CSS (Harita Görünümü İçin) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12 text-center mb-3">
+            <h2>🛵 Siparişin Yolda!</h2>
+            <p class="text-muted">Kuryenin anlık konumunu haritadan canlı izleyebilirsin.</p>
+            
+            <!-- TEST İÇİN: Kuryeyi hareket ettirecek simülasyon butonu -->
+            <button id="btnSimulate" class="btn btn-warning mb-2">
+                🎮 Kurye Simülasyonunu Başlat
+            </button>
+        </div>
+    </div>
+
+    <!-- Haritanın Çizileceği Alan -->
+    <div class="row">
+        <div class="col-md-12">
+            <div id="map" style="height: 500px; width: 100%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Leaflet.js ve SignalR Kütüphaneleri -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+
+    <script>
+        const currentOrderId = @ViewBag.OrderId;
+
+        // 1. HARİTAYI OLUŞTURMA (İstanbul merkezli)
+        var map = L.map('map').setView([41.0082, 28.9784], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Kurye İkonunu Tanımlama
+        var courierIcon = L.icon({
+            iconUrl: 'https://cdn-icons-png.flaticon.com/512/2956/2956314.png', // Motosiklet ikonu
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
+        });
+
+        var courierMarker = null;
+
+        // 2. SIGNALR BAĞLANTISINI KURMA
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/courierHub")
+            .build();
+
+        // 3. MERKEZ İSTASYONDAN GELEN KONUM BİLGİSİNİ DİNLEME
+        connection.on("ReceiveLocation", function (orderId, lat, lng) {
+            if (orderId === currentOrderId) {
+                if (courierMarker === null) {
+                    // Kurye haritada yoksa ilk kez oluştur
+                    courierMarker = L.marker([lat, lng], { icon: courierIcon }).addTo(map);
+                } else {
+                    // Kurye haritada varsa sadece yerini değiştir (Hareket animasyonu)
+                    courierMarker.setLatLng([lat, lng]);
+                }
+                // Harita kamerasını kuryeye odakla
+                map.panTo([lat, lng]);
+            }
+        });
+
+        // Bağlantıyı Başlat
+        connection.start().then(function () {
+            console.log("SignalR Bağlantısı Başarılı! Konum bekleniyor...");
+        }).catch(function (err) {
+            return console.error(err.toString());
+        });
+
+        // ==========================================
+        // KURYEYİ HAREKET ETTİREN SİMÜLASYON KODU
+        // ==========================================
+        document.getElementById("btnSimulate").addEventListener("click", function () {
+            this.disabled = true;
+            this.innerText = "Simülasyon Çalışıyor...";
+
+            // Başlangıç noktası
+            let currentLat = 41.0082;
+            let currentLng = 28.9784;
+
+            // Her 1 saniyede bir kuryeyi kuzey-doğu yönünde ilerlet
+            setInterval(async () => {
+                currentLat += 0.0005; // Enlemi artır
+                currentLng += 0.0005; // Boylamı artır
+
+                // Sanki mobil uygulamaymışız gibi SignalR Hub'ına yeni konumu fırlatıyoruz!
+                await connection.invoke("SendCourierLocation", currentOrderId, currentLat, currentLng);
+            }, 1000);
+        });
+    </script>
+}

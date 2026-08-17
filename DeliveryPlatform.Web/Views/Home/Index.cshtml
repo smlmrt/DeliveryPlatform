@@ -1,0 +1,62 @@
+﻿@{
+    ViewData["Title"] = "Ana Sayfa - Sipariş Ver";
+}
+
+<div class="container text-center mt-5">
+    <h1 class="display-4">🍔 Restoran Sipariş Sistemi</h1>
+    <p class="lead">Sipariş verin, arka planda RabbitMQ kuyruğuna atalım ve Worker işlesin!</p>
+    
+    <div class="card shadow-sm mx-auto mt-4" style="max-width: 400px;">
+        <div class="card-body">
+            <h5 class="card-title">Hızlı Sipariş Sepeti</h5>
+            <p class="card-text text-muted">Örnek Sipariş: 1x Hamburger Menü (150.50 ₺)</p>
+            
+            <button id="btnOrder" class="btn btn-lg btn-danger w-100">
+                🚀 Hemen Sipariş Ver
+            </button>
+            
+            <div id="statusMessage" class="mt-3 fw-bold"></div>
+            <a href="/Home/TrackCourier" class="btn btn-outline-primary w-100 mt-2">📍 Canlı Kurye Takibi</a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById("btnOrder").addEventListener("click", async function() {
+            const statusDiv = document.getElementById("statusMessage");
+            statusDiv.innerText = "Siparişiniz işleniyor...";
+            statusDiv.className = "mt-3 fw-bold text-warning";
+
+            // API'ye göndereceğimiz örnek sipariş verisi
+            const orderData = {
+                customerName: "Ahmet Yılmaz",
+                totalPrice: 150.50,
+                deliveryLatitude: 41.0082,
+                deliveryLongitude: 28.9784,
+                restaurantId: 1 
+            };
+
+            try {
+                const response = await fetch('/api/order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderData)
+                });
+
+                if (response.status === 202) {
+                    const result = await response.json();
+                    statusDiv.innerText = "✅ " + result.message;
+                    statusDiv.className = "mt-3 fw-bold text-success";
+                } else {
+                    statusDiv.innerText = "❌ Bir hata oluştu.";
+                    statusDiv.className = "mt-3 fw-bold text-danger";
+                }
+            } catch (error) {
+                console.error("Hata:", error);
+                statusDiv.innerText = "❌ Sunucuya ulaşılamadı.";
+                statusDiv.className = "mt-3 fw-bold text-danger";
+            }
+        });
+    </script>
+}
